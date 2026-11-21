@@ -14,7 +14,7 @@
  if(!saved||typeof saved!=='object'||Array.isArray(saved))saved={};
  if(!progress||typeof progress!=='object'||Array.isArray(progress))progress={};
  const persist=()=>{try{localStorage.setItem('careerFullSavedV4',JSON.stringify(saved));localStorage.setItem('careerFullProgressV4',JSON.stringify(progress));}catch{}};
- const labels={advice:'建议与行动',catalog:'参考总库',research:'企业研究',tracks:'方向地图',planning:'双人规划',method:'证据与范围'};
+ const labels={advice:'实习清单',catalog:'历史资料库',research:'企业研究',tracks:'方向地图',planning:'双人规划',method:'证据与范围'};
  const pageSize=40,companyPageSize=24,researchPageSize=18;
  const filterIds=['catalog-search','catalog-person','catalog-fit','catalog-track','catalog-city','catalog-evidence','catalog-kind','catalog-sort','only-saved'];
  const unitList=()=>mode==='jobs'?jobs:rows;

@@ -1,6 +1,6 @@
 (() => {
  'use strict';
- const status=document.querySelector('#local-data-status'),loading=document.querySelector('#loading'),version='public-full-20261121';
+ const status=document.querySelector('#local-data-status'),loading=document.querySelector('#loading'),version='focus-20261121-1';
  const retry=document.querySelector('#retry-full');retry.addEventListener('click',()=>location.reload());
  const hash=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
  async function get(url){const response=await fetch(url,{cache:'no-cache'});if(!response.ok)throw Error('下载失败：'+url+'（'+response.status+'）');return response;}
@@ -23,7 +23,8 @@
   window.CAREER_V4=p.research;window.CAREER_ADVICE_V6=p.advice;window.CAREER_RAW_V4=p.raw;window.CAREER_CATALOG_V4=p.catalog;window.CAREER_JOBS_V5=p.jobs;
   window.CAREER_LOCAL_MODE='public-full';
   status.textContent=`完整资料已自动载入：${p.catalog.records.length.toLocaleString()} 条原记录 / ${p.jobs.jobs.length.toLocaleString()} 条岗位参考 / ${p.research.research.length} 份企业研究 / ${p.advice.cases.length} 个精读案例。无需手动导入。`;
-  await script('atlas-v5-full.js');await script('atlas-v6-full.js');
+  await script('case-rules.js');await script('atlas-v5-full.js');await script('atlas-v6-full.js');
   document.querySelector('#rail-date').textContent='完整公开资料 · 日期以各条来源为准';
+  document.documentElement?.classList.add('data-ready');
  }catch(e){status.textContent='加载未完成：'+e.message;loading.textContent='请检查网络后点击“重新加载”。不会用五条示例替代完整资料。';retry.hidden=false;}})();
 })();
