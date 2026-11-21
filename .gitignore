@@ -1,0 +1,6 @@
+.env
+.env.*
+PRIVATE-LOCAL-DATA*
+private-export/
+node_modules/
+*.log
