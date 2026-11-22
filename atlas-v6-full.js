@@ -7,7 +7,7 @@
   const arr = v => Array.isArray(v) ? v : v ? [v] : [];
   const safe = u => {try {const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : '#';} catch {return '#';}};
   const list = v => `<ul class="ad-list">${arr(v).map(x => `<li>${esc(value(x))}</li>`).join('')}</ul>`;
-  const section = (title, body) => ["匹配点与待补能力","本次核验与申请入口","专业与招聘条件","下一步怎么做"].includes(title) ? `<section class="drawer-section"><h3>${title}</h3>${body}</section>` : `<details class="drawer-more"><summary>${title}</summary>${body}</details>`;
+  const section = (title, body) => ["JD 与原始岗位说明","匹配点与待补能力","本次核验与申请入口","专业与招聘条件","下一步怎么做"].includes(title) ? `<section class="drawer-section"><h3>${title}</h3>${body}</section>` : `<details class="drawer-more"><summary>${title}</summary>${body}</details>`;
   const line = (label, text) => text ? `<div class="ad-detail-line"><b>${label}</b><p>${esc(value(text))}</p></div>` : '';
   const name = p => p === 'male' ? '男方' : p === 'female' ? '女方' : '双方';
   const cases = D.cases, caseMap = new Map(cases.map(c => [c.id, c])), byJob = new Map();
@@ -24,9 +24,14 @@
   function remember() {const u = new URL(location.href); u.searchParams.set('adviceTab', tab); ['person','priority','city','query','freshness'].forEach(k => {const val = $('#ad-'+k).value; if (val && val !== 'all') u.searchParams.set('case'+k, val); else u.searchParams.delete('case'+k);}); history.replaceState(null, '', u);}
   function setTab(id, persist = true) {tab = ['routes','cases','cities','actions'].includes(id) ? id : 'routes'; $('#view-advice').classList.toggle('ad-focused',tab !== 'routes'); document.querySelectorAll('[data-ad-panel]').forEach(e => e.hidden = e.dataset.adPanel !== tab); document.querySelectorAll('[data-ad-tab]').forEach(e => {e.classList.toggle('active', e.dataset.adTab === tab); e.setAttribute('aria-selected', e.dataset.adTab === tab); e.tabIndex = e.dataset.adTab === tab ? 0 : -1;}); if (persist) remember();}
   function sourceList(sources) {return arr(sources).map(s => `<div class="ad-source"><a href="${esc(safe(s.url))}" target="_blank" rel="noopener noreferrer">${esc(s.label || s.url)} ↗</a><small>${esc(value(s.type || s.level || '来源'))} · 查阅 ${esc(s.checked || '日期未记录')}</small>${s.claims?.length ? `<p>支持：${esc(value(s.claims))}</p>` : ''}</div>`).join('');}
+  function jdSection(c) {
+    const jd=window.CAREER_JD.summary(c),links=window.CAREER_JD.links(c);
+    return section('JD 与原始岗位说明', `<p class="jd-access">${esc(jd.access)}</p><div class="jd-links">${links.map(s=>`<a class="btn ${s.kind==='official'?'primary':''}" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.caption)}<small>${esc(s.label||new URL(s.url).hostname)}</small></a>`).join('')||'<p>原资料未提供可用外链，不能伪造 JD。</p>'}</div><h4>职责要点（摘要，非原文）</h4>${list(jd.duties)}<h4>任职条件（摘要，非原文）</h4>${list(jd.requirements)}${line('办公与时间',c.workload?.facts)}${line('仍需确认',c.eligibility?.unknown)}<p class="jd-date">${jd.checked?'摘要依据日期：'+esc(jd.checked):'摘要日期未独立记录'} · 外部完整原文以招聘方页面为准</p>`);
+  }
+
   function openCase(id) {
     const c = caseMap.get(id); if (!c) return;
-    const body = `<div class="ad-verdict"><span>${esc(c.priority)} · ${name(c.person)}</span><p>${esc(c.verdict)}</p></div>` +
+    const body = jdSection(c) + `<div class="ad-verdict"><span>${esc(c.priority)} · ${name(c.person)}</span><p>${esc(c.verdict)}</p></div>` +
       section('匹配点与待补能力', `<div class="ad-detail-two"><div><h4>为什么值得看</h4>${list(c.why)}</div><div><h4>目前缺口</h4>${list(c.gaps)}</div></div>`) +
       section('本次核验与申请入口', line('状态', c.currentStatus || '历史研究参考，未在本次重新核验') + line('核验日期', c.checked || ('未独立记录；来源日期：'+(window.CAREER_CASE_RULES.classify(c).checked || '未记录'))) + line('申请截止', c.deadline || '以具体来源说明为准；历史样本不视为当前在招') + (c.applicationUrl ? `<a class="btn primary" href="${esc(safe(c.applicationUrl))}" target="_blank" rel="noopener noreferrer">官方岗位 / 申请入口 ↗</a>` : '')) +
       section('专业与招聘条件', line('已经读到', c.eligibility?.known) + line('仍需核实', c.eligibility?.unknown) + line('历史批次参考', c.eligibility?.reference2028)) +
@@ -43,12 +48,14 @@
     const result=cases.filter(c=>(p==='all'||c.person===p||c.person==='both')&&(priority==='all'||c.priority===priority)&&(city==='all'||c.cities.some(x=>x.includes(city)))&&R.inRange(c,freshness)&&(!q||q.split(/\s+/).every(t=>[c.company,c.title,c.verdict,...c.why,...c.gaps].join(' ').toLowerCase().includes(t))));
     const rank=c=>['优先申请','主攻'].includes(c.priority)?0:c.priority==='待复核'?2:1;
     result.sort((a,b)=>R.classify(b).checked.localeCompare(R.classify(a).checked)||rank(a)-rank(b));
-    $('#ad-case-count').textContent=`${result.length} 项 / 全部 ${cases.length} 项精读`;
+    $('#ad-case-count').textContent=`当前 ${result.length} 项 · 全部 ${cases.length} 项（含历史）`;
+    const labels={recent:'近7天核验',pending:'待复核',history:'历史参考',all:'全部研究'};
+    $('#ad-case-scopes').innerHTML=Object.entries(labels).map(([key,label])=>`<button class="btn small ${freshness===key?'primary':''}" data-case-scope="${key}" aria-pressed="${freshness===key}">${label} ${cases.filter(c=>(p==='all'||c.person===p||c.person==='both')&&R.inRange(c,key)).length}</button>`).join('');
     const paragraph=(label,text)=>text?`<div class="case-line"><b>${label}</b><p>${esc(text)}</p></div>`:'';
     $('#ad-case-grid').innerHTML=result.length?result.map(c=>{
-      const state=R.classify(c),source=c.applicationUrl||(c.sources||[]).find(s=>/官方|官网/.test(s.label||s.type||s.level||''))?.url;
-      const href=source?safe(source):'#',link=href!=='#'?`<a class="btn primary" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${c.applicationUrl?'申请入口':'官方来源'}</a>`:'';
-      return `<article class="ad-case-card compact-card"><div class="ad-card-meta"><span class="evidence-chip ${state.bucket}">${esc(state.label)}</span><span>${state.explicit?'核验':'来源'} ${esc(state.checked||'日期未记录')}</span></div><button class="ad-title-link" data-case="${esc(c.id)}"><h3>${esc(c.title)}</h3></button><p class="ad-employer">${esc(c.company)} · ${name(c.person)}</p><div class="case-facts"><div><b>地点</b><span>${esc(c.cities.join(' / ')||'未公布')}</span></div><div><b>截止</b><span>${esc(c.deadline||'未公布 / 以官方说明为准')}</span></div></div>${c.currentStatus?`<p class="case-status">${esc(c.currentStatus)}</p>`:''}<div class="case-essentials">${paragraph('要求',value(c.eligibility?.known))}${paragraph('匹配',c.why.slice(0,2).join('；'))}${paragraph('缺口',c.gaps.slice(0,2).join('；'))}</div><div class="ad-card-foot"><button class="btn small ${selected.includes(c.id)?'primary':''}" data-case-compare="${esc(c.id)}" aria-pressed="${selected.includes(c.id)}">${selected.includes(c.id)?'已加入对比':'加入对比'}</button><button class="btn small" data-case="${esc(c.id)}">详情</button>${link}</div></article>`;
+      const state=R.classify(c),source=window.CAREER_JD.links(c)[0];
+      const link=source?`<a class="btn primary" href="${esc(source.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(c.title+'：'+source.caption)}">${esc(source.caption)}</a>`:'<span>原资料无 JD 链接</span>';
+      return `<article class="ad-case-card compact-card"><div class="ad-card-meta"><span class="evidence-chip ${state.bucket}">${esc(state.label)}</span><span>${state.explicit?'核验':'来源'} ${esc(state.checked||'日期未记录')}</span></div><button class="ad-title-link" data-case="${esc(c.id)}"><h3>${esc(c.title)}</h3></button><p class="ad-employer">${esc(c.company)} · ${name(c.person)}</p><div class="case-facts"><div><b>地点</b><span>${esc(c.cities.join(' / ')||'未公布')}</span></div><div><b>截止</b><span>${esc(c.deadline||'未公布 / 以官方说明为准')}</span></div></div>${c.currentStatus?`<p class="case-status">${esc(c.currentStatus)}</p>`:''}<div class="case-essentials">${paragraph('要求',value(c.eligibility?.known))}${paragraph('匹配',c.why.slice(0,2).join('；'))}${paragraph('缺口',c.gaps.slice(0,2).join('；'))}</div><div class="ad-card-foot"><button class="btn small ${selected.includes(c.id)?'primary':''}" data-case-compare="${esc(c.id)}" aria-pressed="${selected.includes(c.id)}">${selected.includes(c.id)?'已加入对比':'加入对比'}</button><button class="btn small" data-case="${esc(c.id)}">JD 摘要与分析</button>${link}</div></article>`;
     }).join(''):`<div class="empty"><b>${freshness==='recent'?'当前筛选下没有近7天岗位级核验记录':'当前条件没有记录'}</b><p>这不表示没有实习机会；历史资料不会自动标成当前有效。</p><button class="btn" id="ad-reset-empty">查看全部精读</button></div>`;
     $('#ad-compare-open').textContent=`对比已选 ${selected.length} / 4`;
     $('#ad-compare-open').disabled=selected.length<2;$('#ad-compare-clear').hidden=!selected.length;
