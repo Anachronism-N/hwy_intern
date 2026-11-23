@@ -1,6 +1,6 @@
 (() => {
  'use strict';
- const status=document.querySelector('#local-data-status'),loading=document.querySelector('#loading'),version='jd-20261122-1';
+ const status=document.querySelector('#local-data-status'),loading=document.querySelector('#loading'),version='jd-20261123-1';
  const retry=document.querySelector('#retry-full');retry.addEventListener('click',()=>location.reload());
  const hash=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
  async function get(url){const response=await fetch(url,{cache:'no-cache'});if(!response.ok)throw Error('下载失败：'+url+'（'+response.status+'）');return response;}
